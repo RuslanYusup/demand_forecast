@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 from catboost import CatBoostRegressor
 
+from src.features.build_features import FeatureEngineering, FOLDS, key_cols
 
 
 def predict(df: pd.DataFrame, month: pd.Timestamp) -> pd.DataFrame:
@@ -10,8 +11,7 @@ def predict(df: pd.DataFrame, month: pd.Timestamp) -> pd.DataFrame:
 
     Параметры:
         df:
-          датафрейм, содержащий все сделки с начала тренировочного периода до `month`; типы
-          колонок совпадают с типами в ноутбуке `[SC2021] Baseline`,
+          датафрейм, содержащий все сделки с начала тренировочного периода до `month`,
         month:
           месяц, для которого вычисляются предсказания.
 
@@ -22,7 +22,7 @@ def predict(df: pd.DataFrame, month: pd.Timestamp) -> pd.DataFrame:
         Предсказанные значения находятся в колонке `prediction`.
     """
 
-    group_ts = df.groupby(AGG_COLS + ["month"])["volume"].sum().unstack(fill_value=0)
+    group_ts = df.groupby(key_cols + ["month"])["volume"].sum().unstack(fill_value=0)
     group_ts[month] = 0
     new_df = pd.DataFrame(group_ts.stack()).reset_index()
     new_df = new_df.rename(columns={0: 'volume'})
@@ -35,12 +35,13 @@ def predict(df: pd.DataFrame, month: pd.Timestamp) -> pd.DataFrame:
     model = CatBoostRegressor()
     predictions = pd.DataFrame()
     for i in range(FOLDS):
-        model_path = f'cv_model_{i}.cbm'
+        model_path = rf'C:\Users\yusup\OneDrive\Рабочий стол\Demand_ forecast\data\processed\cv_model_{i}.cbm'
         model.load_model(model_path)
         prediction = model.predict(predicting_data[model.feature_names_])
         predictions[f'prediction_{i}'] = prediction
 
-    preds_df = predicting_data[AGG_COLS].copy()
+    preds_df = predicting_data[key_cols].copy()
     preds_df["prediction"] = np.expm1(np.mean(predictions, axis=1))
 
     return preds_df
+#%%
