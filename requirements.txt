@@ -1,0 +1,8 @@
+click==8.0.4
+pathlib==1.0.1
+python-dotenv==0.21.0
+pandas==1.1.5
+numpy==1.21.6
+catboost==1.2.2
+setuptools==63.4.1
+pytest==7.4.0

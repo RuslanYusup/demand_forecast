@@ -1,32 +1,49 @@
-import pandas as pd
-import datetime
 
-# импортируем класс FeatureEngineering из файла build_features.py
-from src.features.build_features import FeatureEngineering
+key_cols = ["material_code", "company_code", "country", "region", "manager_code", "month", "contract_type", 'material_lvl1_name', 'material_lvl2_name', 'material_lvl3_name']
+target_col = 'volume'
 
-# импортируем функцию predict из файла predict_model.py
-from src.models.predict_model import predict
+import make_datesets
+import SARIMAFeatureEngineering_cat
+import check_stationarity
+import clean_anomalies
+import train_sarima_cat
+import predict_sarima_cat
+import plot_sarima_cat
+from statsmodels.tools.eval_measures import mean_absolute_percentage_error as MAPE
+
 
 # читаем данные из папки raw
-data = pd.read_csv(r'C:\Users\yusup\OneDrive\Рабочий стол\Demand_ forecast\data\raw\sc2021_train_deals.csv', parse_dates=["month", "date"])
-df = data
+df = make_datesets.prepare_time_series_for_model(file_path = 'C:\\Users\\yusup\\OneDrive\\Рабочий стол\\Demand_ forecast\\data\\raw\\sc2021_train_deals.csv')
+
+# смотрим на стационарность
+check_stationarity.test_stationarity(df['volume'])
+
+# кодируем категориальные признаки
+fe = SARIMAFeatureEngineering_cat(data=df, key_cols=key_cols, target_col=target_col)
+df_processed_cat = fe.transform()
+df_resampled_cat = df_processed_cat.resample(rule='W').mean()
 
 
+# выявляем и удаляем аномалии
+df_cleaned = clean_anomalies.remove_detected_anomalies(df_resampled_cat, "volume")
+df_cleaned.drop(columns=['IsAnomaly'], inplace=True)
 
-# проверяем, что дата валидная и соответствует формату
-try:
-    date_month = input("Введите дату в формате YYYY-MM: ")
-    date = datetime.datetime.strptime(date_month, "%Y-%m-%d")
-except ValueError:
-    print("Неверный формат даты. Попробуйте снова.")
-    exit()
+# разбиваем на обучающую и тестовую выборки
+train_eval_cat = df_cleaned[:-33]
+test_eval_cat = df_cleaned[-33:]
 
-# применяем функцию predict к df и date, чтобы получить предсказания
-preds_df = predict(df, date_month)
+# обучаем модель
+model_sarima_cat = train_sarima_cat(train_eval_cat)
 
-# выводим предсказания на экран
-print("Предсказания спроса:")
-print(preds_df)
+# оцениваем качество модели
+pred_sarima_cat = predict_sarima_cat(model_sarima_cat, train_eval_cat, test_eval_cat)
+
+print("MAPE:", MAPE(pred_sarima_cat, test_eval_cat['volume']))
+
+pred_sarima_cat.index = test_eval_cat.index
+
+# строим график
+plot_sarima_cat(train_eval_cat, test_eval_cat, pred_sarima_cat)
 
 
 #%%
