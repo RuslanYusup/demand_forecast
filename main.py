@@ -11,6 +11,8 @@ import predict_sarima_cat
 import plot_sarima_cat
 from statsmodels.tools.eval_measures import mean_absolute_percentage_error as MAPE
 
+## напиши пайплан из для всего что есть в main.py и исправь потенциальные ошибки
+
 
 # читаем данные из папки raw
 df = make_datesets.prepare_time_series_for_model(file_path = 'C:\\Users\\yusup\\OneDrive\\Рабочий стол\\Demand_ forecast\\data\\raw\\sc2021_train_deals.csv')
